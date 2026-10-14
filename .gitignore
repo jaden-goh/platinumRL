@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Editors
+.idea/
+.vscode/
+
+# User-provided native cores, ROMs, firmware, and generated saves
+cores/*
+!cores/.gitkeep
+roms/*
+!roms/.gitkeep
+system/*
+!system/.gitkeep
+saves/*
+!saves/.gitkeep
