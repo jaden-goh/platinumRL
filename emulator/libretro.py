@@ -32,6 +32,11 @@ class AVInfo(C.Structure):
     _fields_=[('geometry',Geometry),('timing',Timing)]
 
 ENV_CB=C.CFUNCTYPE(C.c_bool,C.c_uint,C.c_void_p)
+# retro_log_printf_t is variadic. On x86-64, the fixed arguments can be
+# declared here while any additional printf-style arguments are ignored.
+LOG_CB=C.CFUNCTYPE(None,C.c_int,C.c_char_p)
+class LogInterface(C.Structure):
+    _fields_=[('log',LOG_CB)]
 VIDEO_CB=C.CFUNCTYPE(None,C.c_void_p,C.c_uint,C.c_uint,C.c_size_t)
 AUDIO_CB=C.CFUNCTYPE(None,C.c_int16,C.c_int16)
 AUDIO_BATCH_CB=C.CFUNCTYPE(C.c_size_t,C.c_void_p,C.c_size_t)
@@ -88,8 +93,19 @@ class DSEmulator:
         lib.retro_unserialize.argtypes=[C.c_void_p,C.c_size_t];lib.retro_unserialize.restype=C.c_bool
 
     def _install_callbacks(self):
+        @LOG_CB
+        def log(level,fmt):
+            # The callback is intentionally a no-op: ctypes callbacks cannot
+            # safely expand the native function's variadic formatting args.
+            pass
+        self._log_callback=log
+
         @ENV_CB
         def environment(cmd,data):
+            if cmd==ENV_GET_LOG_INTERFACE:
+                if not data:return False
+                C.cast(data,C.POINTER(LogInterface)).contents.log=self._log_callback
+                return True
             if cmd in (ENV_GET_SYSTEM_DIRECTORY,ENV_GET_SAVE_DIRECTORY):
                 if not data:return False
                 C.cast(data,C.POINTER(C.c_char_p))[0]=self._system_bytes if cmd==ENV_GET_SYSTEM_DIRECTORY else self._save_bytes
